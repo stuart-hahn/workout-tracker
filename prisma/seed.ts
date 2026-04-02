@@ -11,14 +11,18 @@ async function main() {
   const demoPassword = "password123";
 
   const existing = await prisma.user.findUnique({ where: { email: demoEmail } });
-  const user =
-    existing ??
-    (await prisma.user.create({
-      data: {
-        email: demoEmail,
-        passwordHash: await hashPassword(demoPassword),
-      },
-    }));
+  const user = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: { unit: "LB" },
+      })
+    : await prisma.user.create({
+        data: {
+          email: demoEmail,
+          passwordHash: await hashPassword(demoPassword),
+          unit: "LB",
+        },
+      });
 
   await prisma.program.updateMany({
     where: { userId: user.id, active: true },
@@ -50,6 +54,12 @@ async function main() {
           repRangeMin: ex.repRangeMin,
           repRangeMax: ex.repRangeMax,
           setCount: ex.setCount,
+          weightIncrement: ex.movementType === "COMPOUND" ? 5 : 2.5,
+          weightRounding: ex.movementType === "COMPOUND" ? 5 : 2.5,
+          isBodyweight: ex.name.toLowerCase().includes("pull-up"),
+          assistanceMode: ex.name.toLowerCase().includes("pull-up")
+            ? "ASSISTED"
+            : "NONE",
           muscleGroupPrimary: ex.muscleGroupPrimary,
           muscleGroupsSecondary: JSON.stringify(ex.muscleGroupsSecondary),
         },
@@ -128,8 +138,8 @@ async function main() {
     { reps: 8, weight: 55, rir: 0 },
   ]);
   await seedExercise(upperInstance.id, "Pull-Ups", [
-    { reps: 8, weight: 0, rir: 1 },
-    { reps: 7, weight: 0, rir: 0 },
+    { reps: 8, weight: -30, rir: 1 },
+    { reps: 7, weight: -30, rir: 0 },
   ]);
   await seedExercise(lowerInstance.id, "Squat or Leg Press", [
     { reps: 8, weight: 185, rir: 1 },

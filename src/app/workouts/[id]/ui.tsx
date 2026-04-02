@@ -24,6 +24,8 @@ type ApiWorkout = {
     id: string;
     exerciseId: string;
     setNumber: number;
+    targetReps: number | null;
+    targetWeight: number | null;
     reps: number | null;
     weight: number | null;
     rir: number | null;
@@ -118,6 +120,7 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
           (a, b) => a.setNumber - b.setNumber,
         );
 
+        const first = logs[0];
         return (
           <section
             key={ex.id}
@@ -137,6 +140,16 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
 
             <ProgressionHint exerciseId={ex.id} />
 
+            {first?.targetReps || first?.targetWeight ? (
+              <p className="mt-2 text-xs leading-5 text-zinc-600 dark:text-zinc-300">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  Suggested:
+                </span>{" "}
+                {first.targetWeight !== null ? `${first.targetWeight} wt` : "Choose weight"} · Aim{" "}
+                {first.targetReps ?? ex.repRangeMin} reps
+              </p>
+            ) : null}
+
             {ex.notes ? (
               <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-200">
                 {ex.notes}
@@ -148,6 +161,8 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
                 <SetRow
                   key={l.id}
                   setNumber={l.setNumber}
+                  targetReps={l.targetReps}
+                  targetWeight={l.targetWeight}
                   reps={l.reps}
                   weight={l.weight}
                   rir={l.rir}
@@ -180,10 +195,10 @@ function ProgressionHint(props: { exerciseId: string }) {
         { cache: "no-store" },
       );
       const data = (await res.json().catch(() => null)) as
-        | { recommendation?: { message?: string }; effortHint?: string }
+        | { targets?: { rationale?: string }; effortHint?: string }
         | null;
 
-      const msg = data?.recommendation?.message ?? null;
+      const msg = data?.targets?.rationale ?? null;
       const effort = data?.effortHint ?? null;
       if (!cancelled) setText([msg, effort].filter(Boolean).join(" "));
     }
@@ -206,6 +221,8 @@ function ProgressionHint(props: { exerciseId: string }) {
 
 function SetRow(props: {
   setNumber: number;
+  targetReps: number | null;
+  targetWeight: number | null;
   reps: number | null;
   weight: number | null;
   rir: number | null;
@@ -217,18 +234,32 @@ function SetRow(props: {
     completed: boolean;
   }) => void;
 }) {
-  const [reps, setReps] = useState(props.reps?.toString() ?? "");
-  const [weight, setWeight] = useState(props.weight?.toString() ?? "");
+  const initialReps =
+    props.reps ?? (props.targetReps !== null ? props.targetReps : null);
+  const initialWeight =
+    props.weight ?? (props.targetWeight !== null ? props.targetWeight : null);
+
+  const [reps, setReps] = useState(initialReps?.toString() ?? "");
+  const [weight, setWeight] = useState(initialWeight?.toString() ?? "");
   const [rir, setRir] = useState(props.rir?.toString() ?? "");
   const [completed, setCompleted] = useState(props.completed);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setReps(props.reps?.toString() ?? "");
-    setWeight(props.weight?.toString() ?? "");
+    const nextReps = props.reps ?? props.targetReps ?? null;
+    const nextWeight = props.weight ?? props.targetWeight ?? null;
+    setReps(nextReps?.toString() ?? "");
+    setWeight(nextWeight?.toString() ?? "");
     setRir(props.rir?.toString() ?? "");
     setCompleted(props.completed);
-  }, [props.completed, props.reps, props.rir, props.weight]);
+  }, [
+    props.completed,
+    props.reps,
+    props.rir,
+    props.targetReps,
+    props.targetWeight,
+    props.weight,
+  ]);
 
   async function save(nextCompleted: boolean) {
     setSaving(true);

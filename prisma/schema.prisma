@@ -17,6 +17,16 @@ enum MovementType {
   ISOLATION
 }
 
+enum UnitSystem {
+  LB
+  KG
+}
+
+enum AssistanceMode {
+  NONE
+  ASSISTED
+}
+
 enum WorkoutStatus {
   PLANNED
   IN_PROGRESS
@@ -27,6 +37,7 @@ model User {
   id           String    @id @default(cuid())
   email        String    @unique
   passwordHash String
+  unit         UnitSystem @default(LB)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -90,6 +101,11 @@ model Exercise {
   repRangeMax Int
   setCount    Int
 
+  weightIncrement Float?
+  weightRounding  Float?
+  isBodyweight    Boolean        @default(false)
+  assistanceMode  AssistanceMode @default(NONE)
+
   // Used for weekly volume analytics
   muscleGroupPrimary     String
   muscleGroupsSecondary  String?
@@ -125,6 +141,8 @@ model SetLog {
   workoutInstanceId String
   exerciseId       String
   setNumber        Int
+  targetReps       Int?
+  targetWeight     Float?
   reps             Int?
   weight           Float?
   rir              Int?

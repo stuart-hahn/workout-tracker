@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
+import {
+  computeAutoTarget,
+  defaultIncrement,
+  defaultRounding,
+} from "@/lib/progression/autoWeight";
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
@@ -50,6 +55,12 @@ export async function POST(req: Request) {
   });
   if (!day) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const userWithUnit = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { unit: true },
+  });
+  const unit = userWithUnit?.unit ?? "LB";
+
   const instance = await prisma.$transaction(async (tx) => {
     const created = await tx.workoutInstance.create({
       data: {
@@ -62,12 +73,49 @@ export async function POST(req: Request) {
     });
 
     for (const ex of day.exercises) {
+      const lastWorkout = await tx.workoutInstance.findFirst({
+        where: {
+          userId: user.id,
+          status: "COMPLETED",
+          setLogs: { some: { exerciseId: ex.id } },
+        },
+        orderBy: { date: "desc" },
+        select: { id: true },
+      });
+
+      const lastSets = lastWorkout
+        ? await tx.setLog.findMany({
+            where: { workoutInstanceId: lastWorkout.id, exerciseId: ex.id },
+            orderBy: { setNumber: "asc" },
+            select: { reps: true, weight: true, completed: true },
+          })
+        : [];
+
+      const weightIncrement =
+        ex.weightIncrement ??
+        defaultIncrement(unit, ex.movementType === "COMPOUND" ? "COMPOUND" : "ISOLATION");
+      const weightRounding =
+        ex.weightRounding ??
+        defaultRounding(unit, ex.movementType === "COMPOUND" ? "COMPOUND" : "ISOLATION");
+
+      const target = computeAutoTarget({
+        unit,
+        repRangeMin: ex.repRangeMin,
+        repRangeMax: ex.repRangeMax,
+        assistanceMode: ex.assistanceMode,
+        weightIncrement,
+        weightRounding,
+        lastSets,
+      });
+
       for (let setNumber = 1; setNumber <= ex.setCount; setNumber++) {
         await tx.setLog.create({
           data: {
             workoutInstanceId: created.id,
             exerciseId: ex.id,
             setNumber,
+            targetReps: target.targetReps,
+            targetWeight: target.targetWeight,
             completed: false,
           },
         });

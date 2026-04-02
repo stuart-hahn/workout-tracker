@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { recommendDoubleProgression } from "@/lib/progression/doubleProgression";
+import {
+  computeAutoTarget,
+  defaultIncrement,
+  defaultRounding,
+} from "@/lib/progression/autoWeight";
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
@@ -15,9 +19,24 @@ export async function GET(req: Request) {
 
   const exercise = await prisma.exercise.findFirst({
     where: { id: exerciseId, workoutDay: { program: { userId: user.id, active: true } } },
-    select: { id: true, name: true, repRangeMin: true, repRangeMax: true, movementType: true },
+    select: {
+      id: true,
+      name: true,
+      repRangeMin: true,
+      repRangeMax: true,
+      movementType: true,
+      weightIncrement: true,
+      weightRounding: true,
+      assistanceMode: true,
+    },
   });
   if (!exercise) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { unit: true },
+  });
+  const unit = dbUser?.unit ?? "LB";
 
   const lastWorkout = await prisma.workoutInstance.findFirst({
     where: {
@@ -37,11 +56,21 @@ export async function GET(req: Request) {
       })
     : [];
 
-  const rec = recommendDoubleProgression({
+  const weightIncrement =
+    exercise.weightIncrement ??
+    defaultIncrement(unit, exercise.movementType === "COMPOUND" ? "COMPOUND" : "ISOLATION");
+  const weightRounding =
+    exercise.weightRounding ??
+    defaultRounding(unit, exercise.movementType === "COMPOUND" ? "COMPOUND" : "ISOLATION");
+
+  const target = computeAutoTarget({
+    unit,
     repRangeMin: exercise.repRangeMin,
     repRangeMax: exercise.repRangeMax,
     lastSets,
-    weightIncrement: 2.5,
+    assistanceMode: exercise.assistanceMode,
+    weightIncrement,
+    weightRounding,
   });
 
   const effortHint =
@@ -56,9 +85,17 @@ export async function GET(req: Request) {
       repRangeMin: exercise.repRangeMin,
       repRangeMax: exercise.repRangeMax,
       movementType: exercise.movementType,
+      assistanceMode: exercise.assistanceMode,
     },
     lastWorkoutDate: lastWorkout?.date.toISOString() ?? null,
-    recommendation: rec,
+    unit,
+    targets: {
+      weightIncrement,
+      weightRounding,
+      targetWeight: target.targetWeight,
+      targetReps: target.targetReps,
+      rationale: target.rationale,
+    },
     effortHint,
   });
 }
