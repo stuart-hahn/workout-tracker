@@ -21,6 +21,9 @@ function fmtDate(d: Date) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+const volumeLoadError =
+  "Could not load volume. Check your connection and try again. You may be offline or the server is unreachable.";
+
 export default function VolumeClient() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [rows, setRows] = useState<Row[]>([]);
@@ -36,14 +39,14 @@ export default function VolumeClient() {
         { cache: "no-store" },
       );
       if (!res.ok) {
-        setFetchError("Could not load volume. Check your connection and try again.");
+        setFetchError(volumeLoadError);
         setRows([]);
         return;
       }
       const data = (await res.json().catch(() => null)) as { volume?: Row[] } | null;
       setRows(data?.volume ?? []);
     } catch {
-      setFetchError("Could not load volume. Check your connection and try again.");
+      setFetchError(volumeLoadError);
       setRows([]);
     } finally {
       setLoading(false);
@@ -57,11 +60,14 @@ export default function VolumeClient() {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
 
+  const weekRangeLabel = `${fmtDate(weekStart)} – ${fmtDate(weekEnd)}`;
+
   return (
     <Card>
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
+          aria-label={`Previous week (${weekRangeLabel})`}
           onClick={() => {
             const d = new Date(weekStart);
             d.setDate(d.getDate() - 7);
@@ -76,6 +82,7 @@ export default function VolumeClient() {
         </div>
         <button
           type="button"
+          aria-label={`Next week (${weekRangeLabel})`}
           onClick={() => {
             const d = new Date(weekStart);
             d.setDate(d.getDate() + 7);
@@ -89,7 +96,9 @@ export default function VolumeClient() {
 
       <div className="mt-4 flex flex-col gap-2">
         {loading ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-300">Loading…</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300" role="status">
+            Loading volume…
+          </p>
         ) : fetchError ? (
           <div className="rounded-xl border border-red-200/80 bg-red-50/80 p-3 dark:border-red-900/50 dark:bg-red-950/30">
             <p className="text-sm text-red-800 dark:text-red-200" role="alert">

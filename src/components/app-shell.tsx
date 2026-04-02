@@ -129,7 +129,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   ? todayTabVisualActive
                   : pathname === item.href || pathname.startsWith(`${item.href}/`);
             const ariaCurrent =
-              isToday && pathname === itemHref ? "page" : !isToday && active ? "page" : undefined;
+              isToday && todayTabVisualActive ? "page" : !isToday && active ? "page" : undefined;
 
             return (
               <Link

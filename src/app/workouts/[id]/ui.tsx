@@ -10,6 +10,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { Card } from "@/components/ui/card";
+import { TextLink } from "@/components/ui/text-link";
 import { formatLastSessionRepsPerSet } from "@/lib/workouts/lastSessionCopy";
 
 type WeightUnit = "LB" | "KG";
@@ -122,7 +123,7 @@ function RestTimerStrip(props: {
             className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-emerald-800 dark:text-emerald-200 motion-safe:transition-opacity"
             aria-hidden
           >
-            {state.left}s
+            {state.left > 0 ? `${state.left}s` : "Done"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -165,6 +166,7 @@ export default function WorkoutLogger(props: {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [progressionHints, setProgressionHints] = useState<Record<string, string>>({});
+  const [progressionError, setProgressionError] = useState<string | null>(null);
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
   const restStripKeyRef = useRef(0);
   const deleteDialogRef = useRef<HTMLDialogElement>(null);
@@ -190,17 +192,32 @@ export default function WorkoutLogger(props: {
     void refresh();
   }, [refresh]);
 
+  const restTimerTicking =
+    restTimer != null && !restTimer.paused && restTimer.left > 0;
+
   useEffect(() => {
-    if (!restTimer || restTimer.paused || restTimer.left <= 0) return;
+    if (!restTimerTicking) return;
     const id = setInterval(() => {
       setRestTimer((r) => {
         if (!r || r.paused) return r;
-        if (r.left <= 1) return null;
+        if (r.left <= 0) return r;
+        if (r.left === 1) return { ...r, left: 0 };
         return { ...r, left: r.left - 1 };
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [restTimer !== null, restTimer?.paused, restTimer?.total, restTimer?.exerciseName]);
+  }, [
+    restTimerTicking,
+    restTimer?.total,
+    restTimer?.exerciseName,
+    restTimer?.paused,
+  ]);
+
+  useEffect(() => {
+    if (!restTimer || restTimer.left !== 0) return;
+    const id = window.setTimeout(() => setRestTimer(null), 750);
+    return () => window.clearTimeout(id);
+  }, [restTimer?.left, restTimer !== null]);
 
   const logsByExercise = useMemo(() => {
     const map = new Map<string, ApiWorkout["setLogs"]>();
@@ -232,16 +249,33 @@ export default function WorkoutLogger(props: {
 
     let cancelled = false;
     async function run() {
-      const res = await fetch("/api/progression/recommendation", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ exerciseIds: ids }),
-        cache: "no-store",
-      });
-      const data = (await res.json().catch(() => null)) as
-        | { hints?: Record<string, string> }
-        | null;
-      if (!cancelled && data?.hints) setProgressionHints(data.hints);
+      setProgressionError(null);
+      setProgressionHints({});
+      try {
+        const res = await fetch("/api/progression/recommendation", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ exerciseIds: ids }),
+          cache: "no-store",
+        });
+        const data = (await res.json().catch(() => null)) as
+          | { hints?: Record<string, string> }
+          | null;
+        if (cancelled) return;
+        if (!res.ok) {
+          setProgressionError(
+            "Could not load progression suggestions. Check your connection and try again. You may be offline or the server is unreachable.",
+          );
+          return;
+        }
+        setProgressionHints(data?.hints ?? {});
+      } catch {
+        if (!cancelled) {
+          setProgressionError(
+            "Could not load progression suggestions. Check your connection and try again. You may be offline or the server is unreachable.",
+          );
+        }
+      }
     }
     void run();
     return () => {
@@ -378,11 +412,22 @@ export default function WorkoutLogger(props: {
   const exerciseTotal = workout?.workoutDay.exercises.length ?? 0;
 
   if (loading && !workout) {
-    return <Card className="text-sm text-zinc-700 dark:text-zinc-200">Loading…</Card>;
+    return (
+      <Card className="text-sm text-zinc-700 dark:text-zinc-200">
+        <p role="status">Loading…</p>
+      </Card>
+    );
   }
 
   if (!workout) {
-    return <Card className="text-sm text-zinc-700 dark:text-zinc-200">Workout not found.</Card>;
+    return (
+      <Card className="text-sm text-zinc-700 dark:text-zinc-200">
+        <p>Workout not found. It may have been removed or the link is wrong.</p>
+        <TextLink href="/today" className="mt-3 inline-flex">
+          Go to Today
+        </TextLink>
+      </Card>
+    );
   }
 
   const totalSessionSets = workout.workoutDay.exercises.reduce((sum, ex) => sum + ex.setCount, 0);
@@ -399,6 +444,12 @@ export default function WorkoutLogger(props: {
         </p>
       ) : null}
 
+      {progressionError ? (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400" role="status">
+          {progressionError}
+        </p>
+      ) : null}
+
       {restTimer ? (
         <RestTimerStrip
           key={restStripKeyRef.current}
@@ -408,6 +459,24 @@ export default function WorkoutLogger(props: {
             setRestTimer((r) => (r ? { ...r, paused: !r.paused } : r))
           }
         />
+      ) : null}
+
+      {!showDayHeader && (showSessionSetProgress || exerciseTotal > 0) ? (
+        <Card className="py-2.5">
+          <p className="text-xs font-medium text-zinc-700 dark:text-zinc-200" role="status">
+            {showSessionSetProgress ? (
+              <>
+                {completedSessionSets} / {totalSessionSets} sets logged
+              </>
+            ) : null}
+            {showSessionSetProgress && exerciseTotal > 0 ? " · " : null}
+            {exerciseTotal > 0 ? (
+              <>
+                {exerciseTotal} exercise{exerciseTotal === 1 ? "" : "s"} this session
+              </>
+            ) : null}
+          </p>
+        </Card>
       ) : null}
 
       {workout.status === "IN_PROGRESS" ? (
@@ -627,13 +696,21 @@ export default function WorkoutLogger(props: {
 
       <dialog
         ref={deleteDialogRef}
+        aria-labelledby="delete-workout-title"
+        aria-describedby="delete-workout-desc"
         className="max-w-sm rounded-2xl border border-zinc-200 bg-white p-4 text-zinc-950 shadow-xl backdrop:bg-black/50 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-50"
         onClose={() => setDeleteError(null)}
       >
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2
+          id="delete-workout-title"
+          className="text-base font-semibold text-zinc-900 dark:text-zinc-50"
+        >
           Delete this workout?
         </h2>
-        <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+        <p
+          id="delete-workout-desc"
+          className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300"
+        >
           All logged sets for &ldquo;{workout.workoutDay.name}&rdquo; will be removed. This cannot be
           undone.
         </p>

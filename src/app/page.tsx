@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { TextLink } from "@/components/ui/text-link";
 import { PageIntro } from "@/components/ui/page-intro";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -42,23 +41,28 @@ export default async function Home() {
         description="Log sets fast, follow double progression, and see weekly volume by muscle group."
       />
 
-      {inProgressToday ? (
-        <Card className="border-zinc-300 bg-zinc-50 dark:border-white/20 dark:bg-white/5">
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Workout in progress</p>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+      <Card>
+        {inProgressToday ? (
+          <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-300">
+            <span className="font-medium text-zinc-900 dark:text-zinc-50">In progress:</span>{" "}
             {inProgressToday.workoutDay.name}
           </p>
-          <TextLink href={`/workouts/${inProgressToday.id}`} className="mt-3 inline-flex">
-            Resume workout
-          </TextLink>
-        </Card>
-      ) : null}
-
-      <Card>
+        ) : null}
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-2">
-          <Link href="/today" className={primaryLink}>
-            Start today’s workout
-          </Link>
+          {inProgressToday ? (
+            <>
+              <Link href={`/workouts/${inProgressToday.id}`} className={primaryLink}>
+                Resume workout
+              </Link>
+              <Link href="/today" className={secondaryLink}>
+                Start today’s workout
+              </Link>
+            </>
+          ) : (
+            <Link href="/today" className={primaryLink}>
+              Start today’s workout
+            </Link>
+          )}
           <Link href="/program" className={secondaryLink}>
             Program
           </Link>
