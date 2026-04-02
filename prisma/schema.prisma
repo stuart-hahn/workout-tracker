@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum MovementType {
+  COMPOUND
+  ISOLATION
+}
+
+enum WorkoutStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions        Session[]
+  programs        Program[]
+  workoutInstances WorkoutInstance[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  sessionToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Program {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutDays WorkoutDay[]
+  workoutInstances WorkoutInstance[]
+
+  @@index([userId])
+  @@index([active])
+}
+
+model WorkoutDay {
+  id        String  @id @default(cuid())
+  programId String
+  name      String
+  order     Int
+  notes     String?
+
+  program   Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  exercises Exercise[]
+  workoutInstances WorkoutInstance[]
+
+  @@index([programId])
+  @@unique([programId, order])
+}
+
+model Exercise {
+  id          String       @id @default(cuid())
+  workoutDayId String
+  name        String
+  movementType MovementType
+  notes       String?
+  restSeconds Int?
+  repRangeMin Int
+  repRangeMax Int
+  setCount    Int
+
+  // Used for weekly volume analytics
+  muscleGroupPrimary     String
+  muscleGroupsSecondary  String?
+
+  workoutDay      WorkoutDay   @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  setLogs         SetLog[]
+
+  @@index([workoutDayId])
+}
+
+model WorkoutInstance {
+  id          String       @id @default(cuid())
+  userId      String
+  programId   String
+  workoutDayId String
+  date        DateTime
+  status      WorkoutStatus @default(PLANNED)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program   Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  workoutDay WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  setLogs   SetLog[]
+
+  @@index([userId, date])
+  @@index([programId])
+  @@index([workoutDayId])
+}
+
+model SetLog {
+  id               String   @id @default(cuid())
+  workoutInstanceId String
+  exerciseId       String
+  setNumber        Int
+  reps             Int?
+  weight           Float?
+  rir              Int?
+  completed        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workoutInstance WorkoutInstance @relation(fields: [workoutInstanceId], references: [id], onDelete: Cascade)
+  exercise        Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([workoutInstanceId])
+  @@index([exerciseId])
+  @@unique([workoutInstanceId, exerciseId, setNumber])
+}

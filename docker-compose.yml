@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/data/sqlite.db
+    volumes:
+      - workout_tracker_data:/data
+
+volumes:
+  workout_tracker_data:
+
