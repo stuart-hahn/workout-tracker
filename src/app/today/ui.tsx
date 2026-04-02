@@ -36,6 +36,10 @@ export default function StartWorkout(props: {
       }
 
       router.push(`/workouts/${data.workoutInstanceId}`);
+    } catch {
+      setError(
+        "Could not start workout. Check your connection and try again. You may be offline or the server is unreachable.",
+      );
     } finally {
       setBusy(false);
     }
@@ -43,7 +47,11 @@ export default function StartWorkout(props: {
 
   if (continueId) {
     return (
-      <Link href={`/workouts/${continueId}`} className={btnClass}>
+      <Link
+        href={`/workouts/${continueId}`}
+        className={btnClass}
+        aria-label={`Continue ${props.label} workout in progress`}
+      >
         Continue · {props.label}
       </Link>
     );

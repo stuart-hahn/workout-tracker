@@ -64,21 +64,31 @@ export default async function HistoryPage() {
               {formatHeading(key)}
             </h2>
             <ul className="mt-3 space-y-2">
-              {(byDate.get(key) ?? []).map((w) => (
-                <li key={w.id}>
-                  <Link
-                    href={`/workouts/${w.id}`}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-zinc-400 dark:border-white/10 dark:hover:bg-white/10"
-                  >
-                    <span className="font-medium text-zinc-900 dark:text-zinc-50">
-                      {w.workoutDay.name}
-                    </span>
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                      {w.status.replaceAll("_", " ")}
-                    </span>
-                  </Link>
-                </li>
-              ))}
+              {(byDate.get(key) ?? []).map((w) => {
+                const inProgress = w.status === "IN_PROGRESS";
+                const linkClass = inProgress
+                  ? "flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-400/80 bg-emerald-50/90 px-3 py-2 text-sm outline-none hover:bg-emerald-100/80 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/55 dark:focus-visible:ring-offset-zinc-950"
+                  : "flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-zinc-400 dark:border-white/10 dark:hover:bg-white/10";
+                const statusBadgeClass = inProgress
+                  ? "text-xs font-medium text-emerald-800 dark:text-emerald-200"
+                  : "text-xs text-zinc-600 dark:text-zinc-400";
+                return (
+                  <li key={w.id}>
+                    <Link
+                      href={`/workouts/${w.id}`}
+                      className={linkClass}
+                      aria-label={inProgress ? `${w.workoutDay.name}, workout in progress` : undefined}
+                    >
+                      <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                        {w.workoutDay.name}
+                      </span>
+                      <span className={statusBadgeClass}>
+                        {w.status.replaceAll("_", " ")}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </Card>
         ))

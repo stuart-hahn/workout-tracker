@@ -366,6 +366,10 @@ export default function WorkoutLogger(props: {
       }
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       setDeleteError(data?.error ?? "Could not delete workout.");
+    } catch {
+      setDeleteError(
+        "Could not delete workout. Check your connection and try again. You may be offline or the server is unreachable.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -380,6 +384,12 @@ export default function WorkoutLogger(props: {
   if (!workout) {
     return <Card className="text-sm text-zinc-700 dark:text-zinc-200">Workout not found.</Card>;
   }
+
+  const totalSessionSets = workout.workoutDay.exercises.reduce((sum, ex) => sum + ex.setCount, 0);
+  const completedSessionSets = workout.setLogs.filter((l) => l.completed).length;
+  const showSessionSetProgress =
+    totalSessionSets > 0 &&
+    (workout.status === "IN_PROGRESS" || workout.status === "COMPLETED");
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -426,6 +436,11 @@ export default function WorkoutLogger(props: {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
             {workout.workoutDay.name}
           </h2>
+          {showSessionSetProgress ? (
+            <p className="mt-1 text-xs font-medium text-zinc-700 dark:text-zinc-200">
+              {completedSessionSets} / {totalSessionSets} sets logged
+            </p>
+          ) : null}
           {exerciseTotal > 0 ? (
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               {exerciseTotal} exercise{exerciseTotal === 1 ? "" : "s"} this session

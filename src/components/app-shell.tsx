@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+
+const ACTIVE_WORKOUT_CACHE_MS = 30_000;
 
 type NavItem = { href: string; label: string };
 
@@ -26,18 +28,29 @@ function navLinkClass(active: boolean) {
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(null);
+  const activeFetchCacheRef = useRef<{ id: string | null; at: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    const cached = activeFetchCacheRef.current;
+    const now = Date.now();
+    if (cached != null && now - cached.at < ACTIVE_WORKOUT_CACHE_MS) {
+      setActiveWorkoutId(cached.id);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     async function run() {
       const res = await fetch("/api/workouts/active", { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as
         | { workoutInstanceId?: string | null }
         | null;
-      if (!cancelled) {
-        const id = data?.workoutInstanceId;
-        setActiveWorkoutId(typeof id === "string" && id ? id : null);
-      }
+      if (cancelled) return;
+      const id = data?.workoutInstanceId;
+      const nextId = typeof id === "string" && id ? id : null;
+      setActiveWorkoutId(nextId);
+      activeFetchCacheRef.current = { id: nextId, at: Date.now() };
     }
     void run();
     return () => {
@@ -105,19 +118,24 @@ export default function AppShell({ children }: { children: ReactNode }) {
       >
         <div className="mx-auto grid w-full min-w-0 max-w-md grid-cols-5 gap-0.5 px-0.5 py-2 sm:gap-1 sm:px-1">
           {bottomNav.map((item) => {
-            const onWorkoutLog =
-              pathname.startsWith("/workouts/") && item.href === "/today";
+            const itemHref = item.href === "/today" ? logHref : item.href;
+            const isToday = item.href === "/today";
+            const todayTabVisualActive =
+              isToday && (pathname === "/today" || pathname.startsWith("/workouts/"));
             const active =
               item.href === "/"
                 ? pathname === "/"
-                : pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`) ||
-                  onWorkoutLog;
+                : isToday
+                  ? todayTabVisualActive
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const ariaCurrent =
+              isToday && pathname === itemHref ? "page" : !isToday && active ? "page" : undefined;
+
             return (
               <Link
                 key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
+                href={itemHref}
+                aria-current={ariaCurrent}
                 className={navLinkClass(active)}
               >
                 {item.label}

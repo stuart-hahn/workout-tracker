@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { TextLink } from "@/components/ui/text-link";
 import { PageIntro } from "@/components/ui/page-intro";
 import { getCurrentUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { endOfUtcDayExclusive, startOfUtcDay } from "@/lib/dates/utcDay";
 
 export const metadata: Metadata = {
   title: { absolute: "Workout Tracker" },
@@ -16,12 +19,40 @@ const secondaryLink = `w-full rounded-xl border border-zinc-200 bg-white px-4 py
 export default async function Home() {
   const user = await getCurrentUser();
 
+  const inProgressToday =
+    user != null
+      ? await prisma.workoutInstance.findFirst({
+          where: {
+            userId: user.id,
+            status: "IN_PROGRESS",
+            date: {
+              gte: startOfUtcDay(new Date()),
+              lt: endOfUtcDayExclusive(new Date()),
+            },
+          },
+          include: { workoutDay: true },
+          orderBy: { updatedAt: "desc" },
+        })
+      : null;
+
   return (
     <div className="flex min-w-0 flex-col gap-4 pb-2">
       <PageIntro
         title="Your training, simplified."
         description="Log sets fast, follow double progression, and see weekly volume by muscle group."
       />
+
+      {inProgressToday ? (
+        <Card className="border-zinc-300 bg-zinc-50 dark:border-white/20 dark:bg-white/5">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Workout in progress</p>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+            {inProgressToday.workoutDay.name}
+          </p>
+          <TextLink href={`/workouts/${inProgressToday.id}`} className="mt-3 inline-flex">
+            Resume workout
+          </TextLink>
+        </Card>
+      ) : null}
 
       <Card>
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-2">
