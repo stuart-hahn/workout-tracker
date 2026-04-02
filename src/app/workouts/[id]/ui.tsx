@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Card } from "@/components/ui/card";
 import { formatLastSessionRepsPerSet } from "@/lib/workouts/lastSessionCopy";
 
 type ApiWorkout = {
@@ -47,7 +48,12 @@ function repsToInput(v: number | null | undefined): string {
   return String(v);
 }
 
-export default function WorkoutLogger(props: { workoutInstanceId: string }) {
+export default function WorkoutLogger(props: {
+  workoutInstanceId: string;
+  /** When false, day name / notes are shown by the parent page. Default true. */
+  showDayHeader?: boolean;
+}) {
+  const showDayHeader = props.showDayHeader !== false;
   const router = useRouter();
   const [workout, setWorkout] = useState<ApiWorkout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,66 +150,43 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
   }
 
   if (loading && !workout) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
-        Loading…
-      </div>
-    );
+    return <Card className="text-sm text-zinc-700 dark:text-zinc-200">Loading…</Card>;
   }
 
   if (!workout) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
-        Workout not found.
-      </div>
-    );
+    return <Card className="text-sm text-zinc-700 dark:text-zinc-200">Workout not found.</Card>;
   }
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
       {workout.status === "IN_PROGRESS" ? (
-        <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+        <Card>
           <button
             type="button"
             disabled={finishing || deleting}
             onClick={() => void finishWorkout()}
-            className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 sm:w-auto"
+            className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white outline-none hover:bg-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 disabled:opacity-60 dark:focus-visible:ring-offset-zinc-950 sm:w-auto"
           >
             {finishing ? "Saving…" : "Finish workout"}
           </button>
           <p className="mt-2 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
             Marks this session completed so history stays tidy. You can still open it later to review.
           </p>
-        </section>
+        </Card>
       ) : null}
 
-      <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          {workout.workoutDay.name}
-        </h2>
-        {workout.workoutDay.notes ? (
-          <p className="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-            {workout.workoutDay.notes}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="rounded-2xl border border-red-200/80 bg-white p-4 shadow-sm dark:border-red-900/40 dark:bg-white/5">
-        <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-400">
-          Remove this session from history if you started the wrong day or want to discard it.
-        </p>
-        <button
-          type="button"
-          disabled={finishing || deleting}
-          onClick={() => void deleteWorkout(workout.workoutDay.name)}
-          className="mt-3 h-10 w-full rounded-xl border border-red-300 bg-white px-4 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 sm:w-auto"
-        >
-          {deleting ? "Deleting…" : "Delete workout"}
-        </button>
-        {deleteError ? (
-          <p className="mt-2 text-xs text-red-600 dark:text-red-400">{deleteError}</p>
-        ) : null}
-      </section>
+      {showDayHeader ? (
+        <Card>
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+            {workout.workoutDay.name}
+          </h2>
+          {workout.workoutDay.notes ? (
+            <p className="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+              {workout.workoutDay.notes}
+            </p>
+          ) : null}
+        </Card>
+      ) : null}
 
       {workout.workoutDay.exercises.map((ex) => {
         const logs = (logsByExercise.get(ex.id) ?? []).sort(
@@ -229,10 +212,7 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
               : null;
 
         return (
-          <section
-            key={ex.id}
-            className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5"
-          >
+          <Card key={ex.id}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
@@ -319,9 +299,36 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
                 />
               ))}
             </div>
-          </section>
+          </Card>
         );
       })}
+
+      <Card className="border-red-200/80 dark:border-red-900/40">
+        <details className="group">
+          <summary className="cursor-pointer list-none text-sm font-medium text-zinc-800 outline-none marker:content-none dark:text-zinc-200 [&::-webkit-details-marker]:hidden">
+            <span className="underline decoration-zinc-400 underline-offset-2 group-open:no-underline">
+              Advanced
+            </span>
+            <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+              Remove session from history
+            </span>
+          </summary>
+          <p className="mt-3 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+            Delete if you started the wrong day or want to discard this workout and all its logs.
+          </p>
+          <button
+            type="button"
+            disabled={finishing || deleting}
+            onClick={() => void deleteWorkout(workout.workoutDay.name)}
+            className="mt-3 h-10 w-full rounded-xl border border-red-300 bg-white px-4 text-sm font-medium text-red-700 outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 dark:focus-visible:ring-offset-zinc-950 sm:w-auto"
+          >
+            {deleting ? "Deleting…" : "Delete workout"}
+          </button>
+          {deleteError ? (
+            <p className="mt-2 text-xs text-red-600 dark:text-red-400">{deleteError}</p>
+          ) : null}
+        </details>
+      </Card>
     </div>
   );
 }

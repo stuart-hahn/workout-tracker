@@ -14,10 +14,12 @@ export default function StartWorkout(props: {
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const continueId = props.continueWorkoutId ?? null;
 
   async function start() {
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch("/api/workouts", {
         method: "POST",
@@ -29,6 +31,7 @@ export default function StartWorkout(props: {
         | null;
 
       if (!res.ok || !data?.ok || !data.workoutInstanceId) {
+        setError(data?.error ?? "Could not start workout. Try again.");
         return;
       }
 
@@ -47,9 +50,12 @@ export default function StartWorkout(props: {
   }
 
   return (
-    <button type="button" disabled={busy} onClick={() => void start()} className={btnClass}>
-      {busy ? "Starting…" : props.label}
-    </button>
+    <div className="flex min-w-0 flex-col gap-1">
+      <button type="button" disabled={busy} onClick={() => void start()} className={btnClass}>
+        {busy ? "Starting…" : props.label}
+      </button>
+      {error ? <p className="text-center text-xs text-red-600 dark:text-red-400">{error}</p> : null}
+    </div>
   );
 }
 

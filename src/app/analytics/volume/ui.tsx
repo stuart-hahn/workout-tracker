@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 
 type Row = { muscleGroup: string; hardSets: number; tonnage: number };
@@ -49,7 +50,7 @@ export default function VolumeClient() {
   weekEnd.setDate(weekEnd.getDate() + 6);
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+    <Card>
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
@@ -102,7 +103,7 @@ export default function VolumeClient() {
           ))
         )}
       </div>
-    </section>
+    </Card>
   );
 }
 
