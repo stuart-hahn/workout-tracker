@@ -32,6 +32,8 @@ type ApiWorkout = {
     targetRepMax: number | null;
     lastSessionRepMin: number | null;
     lastSessionRepMax: number | null;
+    lastSessionWorkingWeight: number | null;
+    weightExplanation: string | null;
     targetWeight: number | null;
     reps: number | null;
     weight: number | null;
@@ -218,23 +220,33 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
                   ) : null}
                 </p>
                 {first?.targetWeight != null ? (
-                  <p>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                      Suggested weight:
-                    </span>{" "}
-                    {first.targetWeight}{" "}
-                    {weightNote ? <span className="text-zinc-500">({weightNote})</span> : null}
-                  </p>
-                ) : (
-                  <p>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                      Weight:
-                    </span>{" "}
-                    Choose a load to match the rep range.
-                    {weightNote ? (
-                      <span className="text-zinc-500"> {weightNote}</span>
+                  <div className="space-y-1">
+                    <p>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                        Suggested weight:
+                      </span>{" "}
+                      {first.targetWeight}{" "}
+                      {weightNote ? <span className="text-zinc-500">({weightNote})</span> : null}
+                    </p>
+                    {first.weightExplanation ? (
+                      <p className="text-zinc-600 dark:text-zinc-400">{first.weightExplanation}</p>
                     ) : null}
-                  </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                        Weight:
+                      </span>{" "}
+                      Choose a load to match the rep range.
+                      {weightNote ? (
+                        <span className="text-zinc-500"> {weightNote}</span>
+                      ) : null}
+                    </p>
+                    {first.weightExplanation ? (
+                      <p className="text-zinc-600 dark:text-zinc-400">{first.weightExplanation}</p>
+                    ) : null}
+                  </div>
                 )}
               </div>
             ) : null}

@@ -26,9 +26,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden bg-zinc-50 text-zinc-950 dark:bg-black dark:text-zinc-50">
+      <body className="h-full" suppressHydrationWarning>
+        <div className="flex min-h-full flex-col overflow-x-hidden bg-zinc-50 text-zinc-950 dark:bg-black dark:text-zinc-50">
         <header className="sticky top-0 z-10 border-b border-zinc-200/70 bg-zinc-50/90 backdrop-blur dark:border-white/10 dark:bg-black/70">
           <div className="mx-auto flex w-full min-w-0 max-w-md items-center justify-between gap-2 px-4 py-3">
             <Link href="/" className="text-base font-semibold tracking-tight">
@@ -75,6 +77,7 @@ export default function RootLayout({
             </Link>
           </div>
         </nav>
+        </div>
       </body>
     </html>
   );

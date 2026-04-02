@@ -145,6 +145,8 @@ model SetLog {
   targetRepMax     Int?
   lastSessionRepMin Int?
   lastSessionRepMax Int?
+  lastSessionWorkingWeight Float?
+  weightExplanation String?
   targetWeight     Float?
   reps             Int?
   weight           Float?

@@ -155,6 +155,8 @@ export async function POST(req: Request) {
             targetRepMax: target.targetRepMax,
             lastSessionRepMin: target.lastSessionRepMin,
             lastSessionRepMax: target.lastSessionRepMax,
+            lastSessionWorkingWeight: target.lastSessionWorkingWeight,
+            weightExplanation: target.weightExplanation,
             targetWeight: target.targetWeight,
             completed: false,
           },

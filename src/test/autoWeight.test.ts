@@ -1,11 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { computeAutoTarget, roundTo } from "@/lib/progression/autoWeight";
+import {
+  buildWeightExplanation,
+  computeAutoTarget,
+  roundTo,
+} from "@/lib/progression/autoWeight";
 
 describe("roundTo", () => {
   it("rounds to nearest step", () => {
     expect(roundTo(52, 5)).toBe(50);
     expect(roundTo(53, 5)).toBe(55);
     expect(roundTo(-27, 5)).toBe(-25);
+  });
+});
+
+describe("buildWeightExplanation", () => {
+  it("explains missing history without last weight", () => {
+    const s = buildWeightExplanation({
+      unit: "LB",
+      assistanceMode: "NONE",
+      lastSessionWorkingWeight: null,
+      targetWeight: null,
+      hitTopAcrossSets: false,
+      weightIncrement: 5,
+    });
+    expect(s).toContain("No logged working weight");
+  });
+
+  it("uses kg in copy when unit is KG", () => {
+    const s = buildWeightExplanation({
+      unit: "KG",
+      assistanceMode: "NONE",
+      lastSessionWorkingWeight: 100,
+      targetWeight: 100,
+      hitTopAcrossSets: false,
+      weightIncrement: 2.5,
+    });
+    expect(s).toContain("100 kg");
+    expect(s.toLowerCase()).toContain("hold");
   });
 });
 
@@ -26,6 +57,8 @@ describe("computeAutoTarget", () => {
     expect(t.targetRepMax).toBe(10);
     expect(t.lastSessionRepMin).toBeNull();
     expect(t.lastSessionRepMax).toBeNull();
+    expect(t.lastSessionWorkingWeight).toBeNull();
+    expect(t.weightExplanation).toContain("No logged working weight");
   });
 
   it("keeps weight and suggests beating last session up to top of range when below top", () => {
@@ -47,6 +80,9 @@ describe("computeAutoTarget", () => {
     expect(t.targetRepMax).toBe(10);
     expect(t.lastSessionRepMin).toBe(7);
     expect(t.lastSessionRepMax).toBe(8);
+    expect(t.lastSessionWorkingWeight).toBe(100);
+    expect(t.weightExplanation.toLowerCase()).toContain("hold");
+    expect(t.weightExplanation).toContain("100 lb");
   });
 
   it("increases weight and resets rep range when all sets hit top of range", () => {
@@ -68,6 +104,9 @@ describe("computeAutoTarget", () => {
     expect(t.targetRepMax).toBe(12);
     expect(t.lastSessionRepMin).toBe(12);
     expect(t.lastSessionRepMax).toBe(12);
+    expect(t.lastSessionWorkingWeight).toBe(50);
+    expect(t.weightExplanation).toContain("55 lb");
+    expect(t.weightExplanation.toLowerCase()).toContain("increase");
   });
 
   it("reduces assistance (moves weight toward 0) when assisted hits top", () => {
@@ -87,6 +126,9 @@ describe("computeAutoTarget", () => {
     expect(t.targetWeight).toBe(-25);
     expect(t.targetRepMin).toBe(6);
     expect(t.targetRepMax).toBe(10);
+    expect(t.lastSessionWorkingWeight).toBe(-30);
+    expect(t.weightExplanation.toLowerCase()).toContain("assistance");
+    expect(t.weightExplanation).toContain("−30 lb");
   });
 
   it("does not exceed 0 for assisted progression", () => {
@@ -104,6 +146,9 @@ describe("computeAutoTarget", () => {
     });
 
     expect(t.targetWeight).toBe(0);
+    expect(t.lastSessionWorkingWeight).toBe(-2);
+    expect(t.weightExplanation.toLowerCase()).toContain("no assistance");
+    expect(t.weightExplanation).toContain("0 lb");
   });
 
   it("suggests 8-10 when last session was 7,7 on a 6-10 range", () => {

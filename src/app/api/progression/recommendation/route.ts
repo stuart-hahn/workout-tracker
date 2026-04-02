@@ -97,6 +97,8 @@ export async function GET(req: Request) {
       targetRepMax: target.targetRepMax,
       lastSessionRepMin: target.lastSessionRepMin,
       lastSessionRepMax: target.lastSessionRepMax,
+      lastSessionWorkingWeight: target.lastSessionWorkingWeight,
+      weightExplanation: target.weightExplanation,
       rationale: target.rationale,
     },
     effortHint,
