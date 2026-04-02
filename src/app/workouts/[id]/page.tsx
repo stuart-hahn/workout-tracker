@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
 import { requireUser } from "@/lib/auth/requireUser";
 import { PageIntro } from "@/components/ui/page-intro";
 import { TextLink } from "@/components/ui/text-link";
@@ -7,6 +9,27 @@ import WorkoutLogger from "./ui";
 
 function statusLabel(status: string) {
   return status.replaceAll("_", " ");
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const user = await getCurrentUser();
+  if (!user) return { title: "Workout" };
+  const { id } = await params;
+  const row = await prisma.workoutInstance.findFirst({
+    where: { id, userId: user.id },
+    select: {
+      status: true,
+      workoutDay: { select: { name: true } },
+    },
+  });
+  if (!row) return { title: "Not found" };
+  const status =
+    row.status === "IN_PROGRESS" ? "In progress" : statusLabel(row.status);
+  return { title: `${row.workoutDay.name} · ${status}` };
 }
 
 export default async function WorkoutPage({

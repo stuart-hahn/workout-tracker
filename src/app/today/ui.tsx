@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const btnClass =
-  "flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200";
+  "flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:focus-visible:ring-offset-zinc-950";
 
 export default function StartWorkout(props: {
   workoutDayId: string;
@@ -54,7 +54,11 @@ export default function StartWorkout(props: {
       <button type="button" disabled={busy} onClick={() => void start()} className={btnClass}>
         {busy ? "Starting…" : props.label}
       </button>
-      {error ? <p className="text-center text-xs text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <p className="text-center text-xs text-red-600 dark:text-red-400" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

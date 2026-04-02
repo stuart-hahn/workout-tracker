@@ -14,7 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Workout Tracker",
+  title: {
+    default: "Workout Tracker",
+    template: "%s · Workout Tracker",
+  },
   description: "Mobile-first workout logging and progression tracking.",
 };
 

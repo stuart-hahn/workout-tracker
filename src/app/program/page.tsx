@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth/requireUser";
 import { Card } from "@/components/ui/card";
 import { PageIntro } from "@/components/ui/page-intro";
 import { prisma } from "@/lib/db";
+
+export const metadata: Metadata = {
+  title: "Program",
+};
 
 export default async function ProgramPage() {
   const user = await requireUser();

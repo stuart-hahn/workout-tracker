@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth/requireUser";
 import { PageIntro } from "@/components/ui/page-intro";
 import VolumeClient from "./ui";
+
+export const metadata: Metadata = {
+  title: "Weekly volume",
+};
 
 export default async function VolumeAnalyticsPage() {
   await requireUser();

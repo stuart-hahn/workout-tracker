@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { PageIntro } from "@/components/ui/page-intro";
 import { TextLink } from "@/components/ui/text-link";
 import { requireUser } from "@/lib/auth/requireUser";
 import { prisma } from "@/lib/db";
+
+export const metadata: Metadata = {
+  title: "History",
+};
 
 function utcDateKey(d: Date): string {
   return d.toISOString().slice(0, 10);

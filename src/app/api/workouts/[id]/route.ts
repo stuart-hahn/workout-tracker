@@ -26,7 +26,14 @@ export async function GET(
   });
 
   if (!workout) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ workout });
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { unit: true },
+  });
+  const unit = dbUser?.unit === "KG" ? "KG" : "LB";
+
+  return NextResponse.json({ workout, unit });
 }
 
 export async function PATCH(

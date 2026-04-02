@@ -1,7 +1,21 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { getCurrentUser } from "@/lib/auth/session";
+import { LoginLinkWithNext } from "./login-link";
 import RegisterForm from "./ui";
 
-export default function RegisterPage() {
+export const metadata = {
+  title: "Register",
+};
+
+function RegisterFormFallback() {
+  return <div className="h-32 animate-pulse rounded-xl bg-zinc-100 dark:bg-white/10" aria-hidden />;
+}
+
+export default async function RegisterPage() {
+  const user = await getCurrentUser();
+  if (user) redirect("/");
+
   return (
     <div className="flex flex-col gap-4">
       <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
@@ -10,18 +24,22 @@ export default function RegisterPage() {
           Create your account to start tracking workouts and progression.
         </p>
         <div className="mt-4">
-          <RegisterForm />
+          <Suspense fallback={<RegisterFormFallback />}>
+            <RegisterForm />
+          </Suspense>
         </div>
         <div className="mt-4">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-zinc-900 underline underline-offset-4 dark:text-zinc-50"
+          <Suspense
+            fallback={
+              <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                Login link…
+              </span>
+            }
           >
-            Already have an account? Login
-          </Link>
+            <LoginLinkWithNext />
+          </Suspense>
         </div>
       </section>
     </div>
   );
 }
-

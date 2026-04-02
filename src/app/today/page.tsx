@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { PageIntro } from "@/components/ui/page-intro";
@@ -6,8 +7,12 @@ import { prisma } from "@/lib/db";
 import { endOfUtcDayExclusive, startOfUtcDay } from "@/lib/dates/utcDay";
 import StartWorkout from "./ui";
 
+export const metadata: Metadata = {
+  title: "Today",
+};
+
 const quickLink =
-  "rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10";
+  "rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10 dark:focus-visible:ring-offset-zinc-950";
 
 export default async function TodayPage() {
   const user = await requireUser();

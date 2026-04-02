@@ -1,12 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { PageIntro } from "@/components/ui/page-intro";
 import { getCurrentUser } from "@/lib/auth/session";
 
-const primaryLink =
-  "w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-zinc-800 sm:flex-1 dark:bg-white dark:text-black dark:hover:bg-zinc-200";
-const secondaryLink =
-  "w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50 sm:flex-1 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10";
+export const metadata: Metadata = {
+  title: { absolute: "Workout Tracker" },
+};
+
+const focusRing =
+  "outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950";
+const primaryLink = `w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-zinc-800 sm:flex-1 dark:bg-white dark:text-black dark:hover:bg-zinc-200 ${focusRing}`;
+const secondaryLink = `w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50 sm:flex-1 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10 ${focusRing}`;
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -52,7 +57,7 @@ export default async function Home() {
           <div className="mt-4">
             <Link
               href="/logout"
-              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10 sm:w-auto"
+              className={`inline-flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10 sm:w-auto ${focusRing}`}
             >
               Log out
             </Link>
