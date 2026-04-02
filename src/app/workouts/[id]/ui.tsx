@@ -101,7 +101,7 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
           {workout.workoutDay.name}
@@ -248,32 +248,38 @@ function SetRow(props: {
     }
   }
 
+  const markButtonClass = completed
+    ? "h-9 w-full shrink-0 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 sm:ml-auto sm:w-auto"
+    : "h-9 w-full shrink-0 rounded-lg bg-zinc-900 px-3 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200 sm:ml-auto sm:w-auto";
+
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-zinc-200 p-2 dark:border-white/10">
-      <div className="w-10 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">
-        Set {props.setNumber}
+    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-zinc-200 p-2 dark:border-white/10 sm:flex-row sm:items-center sm:gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <div className="w-10 shrink-0 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+          Set {props.setNumber}
+        </div>
+        <input
+          inputMode="numeric"
+          value={reps}
+          onChange={(e) => setReps(e.target.value)}
+          placeholder="Reps"
+          className="h-9 min-w-0 flex-1 basis-[4.5rem] rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/10 dark:bg-black/20 dark:text-zinc-50 dark:focus:border-white/30 sm:w-16 sm:flex-none sm:basis-auto"
+        />
+        <input
+          inputMode="decimal"
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          placeholder="Wt"
+          className="h-9 min-w-0 flex-1 basis-[5rem] rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/10 dark:bg-black/20 dark:text-zinc-50 dark:focus:border-white/30 sm:w-20 sm:flex-none sm:basis-auto"
+        />
+        <input
+          inputMode="numeric"
+          value={rir}
+          onChange={(e) => setRir(e.target.value)}
+          placeholder="RIR"
+          className="h-9 min-w-0 flex-1 basis-[4.5rem] rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/10 dark:bg-black/20 dark:text-zinc-50 dark:focus:border-white/30 sm:w-16 sm:flex-none sm:basis-auto"
+        />
       </div>
-      <input
-        inputMode="numeric"
-        value={reps}
-        onChange={(e) => setReps(e.target.value)}
-        placeholder="Reps"
-        className="h-9 w-16 rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/10 dark:bg-black/20 dark:text-zinc-50 dark:focus:border-white/30"
-      />
-      <input
-        inputMode="decimal"
-        value={weight}
-        onChange={(e) => setWeight(e.target.value)}
-        placeholder="Wt"
-        className="h-9 w-20 rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/10 dark:bg-black/20 dark:text-zinc-50 dark:focus:border-white/30"
-      />
-      <input
-        inputMode="numeric"
-        value={rir}
-        onChange={(e) => setRir(e.target.value)}
-        placeholder="RIR"
-        className="h-9 w-16 rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/10 dark:bg-black/20 dark:text-zinc-50 dark:focus:border-white/30"
-      />
       <button
         type="button"
         disabled={saving}
@@ -282,11 +288,7 @@ function SetRow(props: {
           setCompleted(next);
           void save(next);
         }}
-        className={
-          completed
-            ? "ml-auto h-9 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-            : "ml-auto h-9 rounded-lg bg-zinc-900 px-3 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-        }
+        className={markButtonClass}
       >
         {saving ? "…" : completed ? "Done" : "Mark"}
       </button>
