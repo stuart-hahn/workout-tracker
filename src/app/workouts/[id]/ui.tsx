@@ -52,6 +52,8 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
   const [workout, setWorkout] = useState<ApiWorkout | null>(null);
   const [loading, setLoading] = useState(true);
   const [finishing, setFinishing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -118,6 +120,29 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
     }
   }
 
+  async function deleteWorkout(workoutName: string) {
+    const ok = window.confirm(
+      `Delete “${workoutName}”? All logged sets for this session will be removed. This cannot be undone.`,
+    );
+    if (!ok) return;
+
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/workouts/${props.workoutInstanceId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        router.push("/history");
+        return;
+      }
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setDeleteError(data?.error ?? "Could not delete workout.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading && !workout) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
@@ -140,7 +165,7 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
         <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
           <button
             type="button"
-            disabled={finishing}
+            disabled={finishing || deleting}
             onClick={() => void finishWorkout()}
             className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 sm:w-auto"
           >
@@ -160,6 +185,23 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
           <p className="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
             {workout.workoutDay.notes}
           </p>
+        ) : null}
+      </section>
+
+      <section className="rounded-2xl border border-red-200/80 bg-white p-4 shadow-sm dark:border-red-900/40 dark:bg-white/5">
+        <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+          Remove this session from history if you started the wrong day or want to discard it.
+        </p>
+        <button
+          type="button"
+          disabled={finishing || deleting}
+          onClick={() => void deleteWorkout(workout.workoutDay.name)}
+          className="mt-3 h-10 w-full rounded-xl border border-red-300 bg-white px-4 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 sm:w-auto"
+        >
+          {deleting ? "Deleting…" : "Delete workout"}
+        </button>
+        {deleteError ? (
+          <p className="mt-2 text-xs text-red-600 dark:text-red-400">{deleteError}</p>
         ) : null}
       </section>
 
