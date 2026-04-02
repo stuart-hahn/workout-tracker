@@ -1,7 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { Card } from "@/components/ui/card";
 import { formatLastSessionRepsPerSet } from "@/lib/workouts/lastSessionCopy";
 
@@ -81,7 +88,12 @@ function RestTimerStrip(props: {
   onTogglePause: () => void;
 }) {
   const { state, onDismiss, onTogglePause } = props;
-  const [liveLine, setLiveLine] = useState("");
+  const [liveLine, setLiveLine] = useState(
+    () =>
+      state.left > 0
+        ? `Rest ${state.left} seconds remaining for ${state.exerciseName}.`
+        : "",
+  );
 
   useEffect(() => {
     if (state.left <= 0) {
@@ -154,6 +166,7 @@ export default function WorkoutLogger(props: {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [progressionHints, setProgressionHints] = useState<Record<string, string>>({});
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
+  const restStripKeyRef = useRef(0);
   const deleteDialogRef = useRef<HTMLDialogElement>(null);
   const deleteTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -279,6 +292,7 @@ export default function WorkoutLogger(props: {
             exerciseMeta.restSeconds > 0 &&
             input.setNumber < exerciseMeta.setCount
           ) {
+            restStripKeyRef.current += 1;
             setRestTimer({
               total: exerciseMeta.restSeconds,
               left: exerciseMeta.restSeconds,
@@ -291,7 +305,9 @@ export default function WorkoutLogger(props: {
         }
         return true;
       } catch {
-        setSaveError("Could not save set. Check your connection and try again.");
+        setSaveError(
+          "Could not save set. Check your connection and try again. You may be offline or the server is unreachable.",
+        );
         await refresh();
         return false;
       }
@@ -317,7 +333,9 @@ export default function WorkoutLogger(props: {
       await refresh();
       router.push("/history");
     } catch {
-      setFinishError("Could not finish workout. Check your connection and try again.");
+      setFinishError(
+        "Could not finish workout. Check your connection and try again. You may be offline or the server is unreachable.",
+      );
       await refresh();
     } finally {
       setFinishing(false);
@@ -373,6 +391,7 @@ export default function WorkoutLogger(props: {
 
       {restTimer ? (
         <RestTimerStrip
+          key={restStripKeyRef.current}
           state={restTimer}
           onDismiss={() => setRestTimer(null)}
           onTogglePause={() =>
@@ -656,6 +675,9 @@ function SetRow(props: {
     initialWeight != null && Number.isFinite(initialWeight) ? String(initialWeight) : "",
   );
   const [rir, setRir] = useState(props.rir?.toString() ?? "");
+  const [rirOpen, setRirOpen] = useState(
+    () => props.rir != null && Number.isFinite(props.rir),
+  );
   const [completed, setCompleted] = useState(props.completed);
   const [saving, setSaving] = useState(false);
   const wu = unitShort(props.weightUnit);
@@ -669,6 +691,7 @@ function SetRow(props: {
     );
     setRir(props.rir?.toString() ?? "");
     setCompleted(props.completed);
+    if (props.rir != null && Number.isFinite(props.rir)) setRirOpen(true);
   }, [
     props.completed,
     props.reps,
@@ -682,6 +705,15 @@ function SetRow(props: {
   const repsLabel = `${ex}, set ${n}, reps`;
   const weightLabel = `${ex}, set ${n}, weight in ${wu}`;
   const rirLabel = `${ex}, set ${n}, reps in reserve`;
+
+  function triggerMarkFromKeyboard(e: ReactKeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (saving) return;
+    const next = !completed;
+    setCompleted(next);
+    void save(next);
+  }
 
   async function save(nextCompleted: boolean) {
     setSaving(true);
@@ -734,6 +766,7 @@ function SetRow(props: {
             inputMode="numeric"
             value={reps}
             onChange={(e) => setReps(e.target.value)}
+            onKeyDown={triggerMarkFromKeyboard}
             placeholder="Reps"
             className={`${inputFocusClass} basis-[4.5rem] sm:w-16 sm:flex-none sm:basis-auto`}
           />
@@ -743,6 +776,7 @@ function SetRow(props: {
               inputMode="decimal"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
+              onKeyDown={triggerMarkFromKeyboard}
               placeholder={wu}
               className={`${inputFocusClass} min-w-0 flex-1 basis-0`}
             />
@@ -751,7 +785,11 @@ function SetRow(props: {
             </span>
           </div>
         </div>
-        <details className="rounded-lg border border-zinc-100 bg-zinc-50/80 px-2 py-1 dark:border-white/5 dark:bg-white/5">
+        <details
+          open={rirOpen}
+          onToggle={(e) => setRirOpen(e.currentTarget.open)}
+          className="rounded-lg border border-zinc-100 bg-zinc-50/80 px-2 py-1 dark:border-white/5 dark:bg-white/5"
+        >
           <summary className="cursor-pointer list-none text-xs font-medium text-zinc-600 outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 dark:text-zinc-300 dark:focus-visible:ring-offset-zinc-950 [&::-webkit-details-marker]:hidden">
             RIR <span className="font-normal text-zinc-500">(optional)</span>
           </summary>

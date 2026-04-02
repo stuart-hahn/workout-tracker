@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 type NavItem = { href: string; label: string };
 
@@ -25,6 +25,40 @@ function navLinkClass(active: boolean) {
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const res = await fetch("/api/workouts/active", { cache: "no-store" });
+      const data = (await res.json().catch(() => null)) as
+        | { workoutInstanceId?: string | null }
+        | null;
+      if (!cancelled) {
+        const id = data?.workoutInstanceId;
+        setActiveWorkoutId(typeof id === "string" && id ? id : null);
+      }
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  const workoutIdOnPage = useMemo(() => {
+    const m = pathname.match(/^\/workouts\/([^/]+)/);
+    return m?.[1] ?? null;
+  }, [pathname]);
+
+  /** Prefer current workout URL when already on a session; otherwise resume today’s in-progress instance. */
+  const logHref =
+    workoutIdOnPage != null
+      ? `/workouts/${workoutIdOnPage}`
+      : activeWorkoutId != null
+        ? `/workouts/${activeWorkoutId}`
+        : "/today";
+
+  const logPillActive = pathname === "/today" || pathname.startsWith("/workouts/");
 
   return (
     <div className="flex min-h-full flex-col overflow-x-hidden bg-zinc-50 text-zinc-950 dark:bg-black dark:text-zinc-50">
@@ -43,13 +77,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
             Workout Tracker
           </Link>
           <Link
-            href="/today"
-            aria-current={
-              pathname === "/today" || pathname.startsWith("/workouts/") ? "page" : undefined
-            }
+            href={logHref}
+            aria-current={pathname === logHref ? "page" : undefined}
             className={[
               "rounded-full px-3 py-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950",
-              pathname === "/today" || pathname.startsWith("/workouts/")
+              logPillActive
                 ? "bg-zinc-200 text-zinc-900 dark:bg-white/20 dark:text-zinc-50"
                 : "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200",
             ].join(" ")}
