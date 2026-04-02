@@ -141,7 +141,10 @@ model SetLog {
   workoutInstanceId String
   exerciseId       String
   setNumber        Int
-  targetReps       Int?
+  targetRepMin     Int?
+  targetRepMax     Int?
+  lastSessionRepMin Int?
+  lastSessionRepMax Int?
   targetWeight     Float?
   reps             Int?
   weight           Float?

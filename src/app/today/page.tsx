@@ -1,15 +1,35 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/requireUser";
 import { prisma } from "@/lib/db";
+import { endOfUtcDayExclusive, startOfUtcDay } from "@/lib/dates/utcDay";
 import StartWorkout from "./ui";
 
 export default async function TodayPage() {
-  await requireUser();
+  const user = await requireUser();
 
-  const program = await prisma.program.findFirst({
-    where: { active: true },
-    include: { workoutDays: { orderBy: { order: "asc" } } },
-  });
+  const now = new Date();
+  const dayStart = startOfUtcDay(now);
+  const dayEnd = endOfUtcDayExclusive(now);
+
+  const [program, inProgressToday] = await Promise.all([
+    prisma.program.findFirst({
+      where: { userId: user.id, active: true },
+      include: { workoutDays: { orderBy: { order: "asc" } } },
+    }),
+    prisma.workoutInstance.findMany({
+      where: {
+        userId: user.id,
+        status: "IN_PROGRESS",
+        date: { gte: dayStart, lt: dayEnd },
+      },
+      include: { workoutDay: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+  ]);
+
+  const continueByDayId = new Map(
+    inProgressToday.map((w) => [w.workoutDayId, w.id] as const),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -27,7 +47,12 @@ export default async function TodayPage() {
         </h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {program?.workoutDays.map((d) => (
-            <StartWorkout key={d.id} workoutDayId={d.id} label={d.name} />
+            <StartWorkout
+              key={d.id}
+              workoutDayId={d.id}
+              label={d.name}
+              continueWorkoutId={continueByDayId.get(d.id) ?? null}
+            />
           )) ?? (
             <p className="col-span-2 text-sm text-zinc-600 dark:text-zinc-300">
               No active program found. Seed sample data or create a program.
@@ -44,8 +69,14 @@ export default async function TodayPage() {
           View program
         </Link>
         <Link
-          href="/analytics/volume"
+          href="/history"
           className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10"
+        >
+          History
+        </Link>
+        <Link
+          href="/analytics/volume"
+          className="col-span-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10"
         >
           Weekly volume
         </Link>

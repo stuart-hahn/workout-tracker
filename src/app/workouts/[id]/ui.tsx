@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type ApiWorkout = {
@@ -18,13 +19,18 @@ type ApiWorkout = {
       repRangeMax: number;
       setCount: number;
       movementType: string;
+      assistanceMode: string;
+      isBodyweight: boolean;
     }>;
   };
   setLogs: Array<{
     id: string;
     exerciseId: string;
     setNumber: number;
-    targetReps: number | null;
+    targetRepMin: number | null;
+    targetRepMax: number | null;
+    lastSessionRepMin: number | null;
+    lastSessionRepMax: number | null;
     targetWeight: number | null;
     reps: number | null;
     weight: number | null;
@@ -33,9 +39,16 @@ type ApiWorkout = {
   }>;
 };
 
+function repsToInput(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "";
+  return String(v);
+}
+
 export default function WorkoutLogger(props: { workoutInstanceId: string }) {
+  const router = useRouter();
   const [workout, setWorkout] = useState<ApiWorkout | null>(null);
   const [loading, setLoading] = useState(true);
+  const [finishing, setFinishing] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -86,6 +99,22 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
     await refresh();
   }
 
+  async function finishWorkout() {
+    setFinishing(true);
+    try {
+      const res = await fetch(`/api/workouts/${props.workoutInstanceId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
+      if (!res.ok) return;
+      await refresh();
+      router.push("/history");
+    } finally {
+      setFinishing(false);
+    }
+  }
+
   if (loading && !workout) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
@@ -104,6 +133,22 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
+      {workout.status === "IN_PROGRESS" ? (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <button
+            type="button"
+            disabled={finishing}
+            onClick={() => void finishWorkout()}
+            className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 sm:w-auto"
+          >
+            {finishing ? "Saving…" : "Finish workout"}
+          </button>
+          <p className="mt-2 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+            Marks this session completed so history stays tidy. You can still open it later to review.
+          </p>
+        </section>
+      ) : null}
+
       <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
           {workout.workoutDay.name}
@@ -121,6 +166,23 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
         );
 
         const first = logs[0];
+        const low = first?.targetRepMin ?? ex.repRangeMin;
+        const high = first?.targetRepMax ?? ex.repRangeMax;
+        const lastLo = first?.lastSessionRepMin;
+        const lastHi = first?.lastSessionRepMax;
+        const hasLast =
+          lastLo != null &&
+          lastHi != null &&
+          Number.isFinite(lastLo) &&
+          Number.isFinite(lastHi);
+
+        const weightNote =
+          first?.targetWeight != null && first.targetWeight < 0
+            ? "Assisted: negative weight is help subtracted from bodyweight."
+            : ex.isBodyweight
+              ? "Bodyweight: log extra load as weight if you add it."
+              : null;
+
         return (
           <section
             key={ex.id}
@@ -140,14 +202,40 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
 
             <ProgressionHint exerciseId={ex.id} />
 
-            {first?.targetReps || first?.targetWeight ? (
-              <p className="mt-2 text-xs leading-5 text-zinc-600 dark:text-zinc-300">
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                  Suggested:
-                </span>{" "}
-                {first.targetWeight !== null ? `${first.targetWeight} wt` : "Choose weight"} · Aim{" "}
-                {first.targetReps ?? ex.repRangeMin} reps
-              </p>
+            {first?.targetWeight != null || first?.targetRepMin != null ? (
+              <div className="mt-2 space-y-1 text-xs leading-5 text-zinc-600 dark:text-zinc-300">
+                <p>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                    Suggested reps:
+                  </span>{" "}
+                  {low}–{high}
+                  {hasLast ? (
+                    <>
+                      . Last session: {lastLo}–{lastHi} reps per set; try to beat
+                      that up to {high}.
+                    </>
+                  ) : null}
+                </p>
+                {first?.targetWeight != null ? (
+                  <p>
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                      Suggested weight:
+                    </span>{" "}
+                    {first.targetWeight}{" "}
+                    {weightNote ? <span className="text-zinc-500">({weightNote})</span> : null}
+                  </p>
+                ) : (
+                  <p>
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                      Weight:
+                    </span>{" "}
+                    Choose a load to match the rep range.
+                    {weightNote ? (
+                      <span className="text-zinc-500"> {weightNote}</span>
+                    ) : null}
+                  </p>
+                )}
+              </div>
             ) : null}
 
             {ex.notes ? (
@@ -161,7 +249,6 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
                 <SetRow
                   key={l.id}
                   setNumber={l.setNumber}
-                  targetReps={l.targetReps}
                   targetWeight={l.targetWeight}
                   reps={l.reps}
                   weight={l.weight}
@@ -195,11 +282,18 @@ function ProgressionHint(props: { exerciseId: string }) {
         { cache: "no-store" },
       );
       const data = (await res.json().catch(() => null)) as
-        | { targets?: { rationale?: string }; effortHint?: string }
+        | {
+            targets?: {
+              rationale?: string;
+              targetRepMin?: number;
+              targetRepMax?: number;
+            };
+            effortHint?: string;
+          }
         | null;
 
-      const msg = data?.targets?.rationale ?? null;
-      const effort = data?.effortHint ?? null;
+      const msg = data?.targets?.rationale ?? "";
+      const effort = data?.effortHint ?? "";
       if (!cancelled) setText([msg, effort].filter(Boolean).join(" "));
     }
     void run();
@@ -221,7 +315,6 @@ function ProgressionHint(props: { exerciseId: string }) {
 
 function SetRow(props: {
   setNumber: number;
-  targetReps: number | null;
   targetWeight: number | null;
   reps: number | null;
   weight: number | null;
@@ -234,29 +327,30 @@ function SetRow(props: {
     completed: boolean;
   }) => void;
 }) {
-  const initialReps =
-    props.reps ?? (props.targetReps !== null ? props.targetReps : null);
   const initialWeight =
     props.weight ?? (props.targetWeight !== null ? props.targetWeight : null);
 
-  const [reps, setReps] = useState(initialReps?.toString() ?? "");
-  const [weight, setWeight] = useState(initialWeight?.toString() ?? "");
+  const [reps, setReps] = useState(() => repsToInput(props.reps));
+  const [weight, setWeight] = useState(
+    initialWeight != null && Number.isFinite(initialWeight) ? String(initialWeight) : "",
+  );
   const [rir, setRir] = useState(props.rir?.toString() ?? "");
   const [completed, setCompleted] = useState(props.completed);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const nextReps = props.reps ?? props.targetReps ?? null;
-    const nextWeight = props.weight ?? props.targetWeight ?? null;
-    setReps(nextReps?.toString() ?? "");
-    setWeight(nextWeight?.toString() ?? "");
+    setReps(repsToInput(props.reps));
+    const nextWeight =
+      props.weight ?? (props.targetWeight !== null ? props.targetWeight : null);
+    setWeight(
+      nextWeight != null && Number.isFinite(nextWeight) ? String(nextWeight) : "",
+    );
     setRir(props.rir?.toString() ?? "");
     setCompleted(props.completed);
   }, [
     props.completed,
     props.reps,
     props.rir,
-    props.targetReps,
     props.targetWeight,
     props.weight,
   ]);
@@ -264,14 +358,19 @@ function SetRow(props: {
   async function save(nextCompleted: boolean) {
     setSaving(true);
     try {
-      const repsNum = reps.trim() ? Number(reps) : null;
-      const weightNum = weight.trim() ? Number(weight) : null;
-      const rirNum = rir.trim() ? Number(rir) : null;
+      const repsTrim = reps.trim();
+      const repsNum = repsTrim === "" ? null : Number(repsTrim);
+
+      const weightTrim = weight.trim();
+      const weightNum = weightTrim === "" ? null : Number(weightTrim);
+
+      const rirTrim = rir.trim();
+      const rirNum = rirTrim === "" ? null : Number(rirTrim);
 
       props.onChange({
-        reps: repsNum && Number.isFinite(repsNum) ? repsNum : null,
-        weight: weightNum && Number.isFinite(weightNum) ? weightNum : null,
-        rir: rirNum && Number.isFinite(rirNum) ? rirNum : null,
+        reps: repsNum !== null && Number.isFinite(repsNum) ? repsNum : null,
+        weight: weightNum !== null && Number.isFinite(weightNum) ? weightNum : null,
+        rir: rirNum !== null && Number.isFinite(rirNum) ? rirNum : null,
         completed: nextCompleted,
       });
     } finally {
@@ -326,4 +425,3 @@ function SetRow(props: {
     </div>
   );
 }
-

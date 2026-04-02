@@ -10,7 +10,7 @@ describe("roundTo", () => {
 });
 
 describe("computeAutoTarget", () => {
-  it("returns null weight when no history", () => {
+  it("returns null weight and full program rep range when no history", () => {
     const t = computeAutoTarget({
       unit: "LB",
       repRangeMin: 6,
@@ -22,10 +22,13 @@ describe("computeAutoTarget", () => {
     });
 
     expect(t.targetWeight).toBeNull();
-    expect(t.targetReps).toBe(6);
+    expect(t.targetRepMin).toBe(6);
+    expect(t.targetRepMax).toBe(10);
+    expect(t.lastSessionRepMin).toBeNull();
+    expect(t.lastSessionRepMax).toBeNull();
   });
 
-  it("keeps weight and increases reps when below top of range", () => {
+  it("keeps weight and suggests beating last session up to top of range when below top", () => {
     const t = computeAutoTarget({
       unit: "LB",
       repRangeMin: 6,
@@ -40,10 +43,13 @@ describe("computeAutoTarget", () => {
     });
 
     expect(t.targetWeight).toBe(100);
-    expect(t.targetReps).toBe(9);
+    expect(t.targetRepMin).toBe(8);
+    expect(t.targetRepMax).toBe(10);
+    expect(t.lastSessionRepMin).toBe(7);
+    expect(t.lastSessionRepMax).toBe(8);
   });
 
-  it("increases weight when all sets hit top of range", () => {
+  it("increases weight and resets rep range when all sets hit top of range", () => {
     const t = computeAutoTarget({
       unit: "LB",
       repRangeMin: 8,
@@ -58,7 +64,10 @@ describe("computeAutoTarget", () => {
     });
 
     expect(t.targetWeight).toBe(55);
-    expect(t.targetReps).toBe(8);
+    expect(t.targetRepMin).toBe(8);
+    expect(t.targetRepMax).toBe(12);
+    expect(t.lastSessionRepMin).toBe(12);
+    expect(t.lastSessionRepMax).toBe(12);
   });
 
   it("reduces assistance (moves weight toward 0) when assisted hits top", () => {
@@ -76,6 +85,8 @@ describe("computeAutoTarget", () => {
     });
 
     expect(t.targetWeight).toBe(-25);
+    expect(t.targetRepMin).toBe(6);
+    expect(t.targetRepMax).toBe(10);
   });
 
   it("does not exceed 0 for assisted progression", () => {
@@ -95,4 +106,3 @@ describe("computeAutoTarget", () => {
     expect(t.targetWeight).toBe(0);
   });
 });
-

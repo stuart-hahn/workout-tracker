@@ -2,7 +2,10 @@ import type { AssistanceMode, UnitSystem } from "@/generated/prisma/client";
 
 export type AutoTarget = {
   targetWeight: number | null;
-  targetReps: number;
+  targetRepMin: number;
+  targetRepMax: number;
+  lastSessionRepMin: number | null;
+  lastSessionRepMax: number | null;
   rationale: string;
 };
 
@@ -28,11 +31,23 @@ function pickWorkingWeight(weights: number[]) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+function lastSessionRepBounds(repsValues: number[]): { min: number; max: number } | null {
+  if (repsValues.length === 0) return null;
+  return { min: Math.min(...repsValues), max: Math.max(...repsValues) };
+}
+
+function completedWithFiniteReps(
+  sets: Array<{ reps: number | null; weight: number | null; completed: boolean }>,
+): Array<{ reps: number; weight: number | null; completed: boolean }> {
+  return sets.filter(
+    (s): s is { reps: number; weight: number | null; completed: boolean } =>
+      typeof s.reps === "number" && Number.isFinite(s.reps),
+  );
+}
+
 export function computeAutoTarget(input: AutoWeightInput): AutoTarget {
   const completed = input.lastSets.filter((s) => s.completed);
-  const completedWithReps = completed.filter(
-    (s) => typeof s.reps === "number" && Number.isFinite(s.reps),
-  );
+  const completedWithReps = completedWithFiniteReps(completed);
   const completedWeights = completed
     .map((s) => s.weight)
     .filter((w): w is number => typeof w === "number" && Number.isFinite(w));
@@ -40,19 +55,26 @@ export function computeAutoTarget(input: AutoWeightInput): AutoTarget {
   const repRangeMin = Math.max(1, input.repRangeMin);
   const repRangeMax = Math.max(repRangeMin, input.repRangeMax);
 
+  const sessionReps = completedWithReps.map((s) => s.reps);
+  const sessionBounds = lastSessionRepBounds(sessionReps);
+
   const workingWeight = pickWorkingWeight(completedWeights);
   if (!workingWeight || completedWithReps.length === 0) {
     return {
       targetWeight: null,
-      targetReps: repRangeMin,
-      rationale: "No usable history yet; start at the low end of the rep range.",
+      targetRepMin: repRangeMin,
+      targetRepMax: repRangeMax,
+      lastSessionRepMin: null,
+      lastSessionRepMax: null,
+      rationale:
+        "No usable history yet; suggested reps span your program range. Pick a weight and aim somewhere in that rep band.",
     };
   }
 
-  const reps = completedWithReps.map((s) => s.reps as number);
-  const minReps = Math.min(...reps);
-  const maxReps = Math.max(...reps);
-  const hitTopAcrossSets = minReps >= repRangeMax && reps.length === completed.length;
+  const minReps = Math.min(...sessionReps);
+  const maxReps = Math.max(...sessionReps);
+  const hitTopAcrossSets =
+    minReps >= repRangeMax && completedWithReps.length === completed.length;
 
   if (hitTopAcrossSets) {
     const progressed = workingWeight + input.weightIncrement;
@@ -62,20 +84,28 @@ export function computeAutoTarget(input: AutoWeightInput): AutoTarget {
 
     return {
       targetWeight: nextWeight,
-      targetReps: repRangeMin,
+      targetRepMin: repRangeMin,
+      targetRepMax: repRangeMax,
+      lastSessionRepMin: sessionBounds!.min,
+      lastSessionRepMax: sessionBounds!.max,
       rationale:
         input.assistanceMode === "ASSISTED"
-          ? "Hit the top of the rep range: reduce assistance (move weight toward 0)."
-          : "Hit the top of the rep range: increase weight and restart near the low end of the range.",
+          ? "Hit the top of the rep range last time: reduce assistance (move weight toward 0) and work across the full rep range again."
+          : "Hit the top of the rep range last time: increase weight and restart from the low end of the range.",
     };
   }
 
-  const nextReps = Math.min(repRangeMax, maxReps + 1);
+  const suggestedLow = Math.min(repRangeMax, minReps + 1);
+  const suggestedHigh = repRangeMax;
+
   return {
     targetWeight: Number(roundTo(workingWeight, input.weightRounding).toFixed(2)),
-    targetReps: nextReps,
+    targetRepMin: suggestedLow,
+    targetRepMax: suggestedHigh,
+    lastSessionRepMin: sessionBounds!.min,
+    lastSessionRepMax: sessionBounds!.max,
     rationale:
-      "Stay at the same weight and add reps until you reach the top of the range, then increase weight.",
+      "Stay at the same weight and beat last session’s reps, working up to the top of the range before adding weight.",
   };
 }
 
@@ -88,4 +118,3 @@ export function defaultRounding(unit: UnitSystem, movementType: "COMPOUND" | "IS
   if (unit === "KG") return movementType === "COMPOUND" ? 2.5 : 1.25;
   return movementType === "COMPOUND" ? 5 : 2.5;
 }
-

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
+import { endOfUtcDayExclusive, startOfUtcDay } from "@/lib/dates/utcDay";
 import {
   computeAutoTarget,
   defaultIncrement,
@@ -12,6 +13,20 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
+  const range = searchParams.get("range");
+
+  if (range === "recent") {
+    const limitRaw = searchParams.get("limit");
+    const limit = Math.min(100, Math.max(1, Number(limitRaw) || 50));
+    const workouts = await prisma.workoutInstance.findMany({
+      where: { userId: user.id },
+      orderBy: { date: "desc" },
+      take: limit,
+      include: { workoutDay: true },
+    });
+    return NextResponse.json({ workouts });
+  }
+
   const weekStart = searchParams.get("weekStart");
 
   const start = weekStart ? new Date(weekStart) : new Date();
@@ -54,6 +69,28 @@ export async function POST(req: Request) {
     include: { program: true, exercises: true },
   });
   if (!day) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const dayStart = startOfUtcDay(date);
+  const dayEnd = endOfUtcDayExclusive(date);
+
+  const existing = await prisma.workoutInstance.findFirst({
+    where: {
+      userId: user.id,
+      workoutDayId: day.id,
+      programId: day.programId,
+      status: "IN_PROGRESS",
+      date: { gte: dayStart, lt: dayEnd },
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return NextResponse.json({
+      ok: true,
+      workoutInstanceId: existing.id,
+      resumed: true,
+    });
+  }
 
   const userWithUnit = await prisma.user.findUnique({
     where: { id: user.id },
@@ -114,7 +151,10 @@ export async function POST(req: Request) {
             workoutInstanceId: created.id,
             exerciseId: ex.id,
             setNumber,
-            targetReps: target.targetReps,
+            targetRepMin: target.targetRepMin,
+            targetRepMax: target.targetRepMax,
+            lastSessionRepMin: target.lastSessionRepMin,
+            lastSessionRepMax: target.lastSessionRepMax,
             targetWeight: target.targetWeight,
             completed: false,
           },
@@ -125,6 +165,5 @@ export async function POST(req: Request) {
     return created;
   });
 
-  return NextResponse.json({ ok: true, workoutInstanceId: instance.id });
+  return NextResponse.json({ ok: true, workoutInstanceId: instance.id, resumed: false });
 }
-

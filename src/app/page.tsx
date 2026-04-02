@@ -27,6 +27,12 @@ export default async function Home() {
           >
             Edit program
           </Link>
+          <Link
+            href="/history"
+            className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50 sm:flex-1 dark:border-white/10 dark:bg-transparent dark:text-zinc-50 dark:hover:bg-white/10"
+          >
+            History
+          </Link>
         </div>
       </section>
 
