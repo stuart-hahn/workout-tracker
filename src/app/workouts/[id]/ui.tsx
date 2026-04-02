@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { formatLastSessionRepsPerSet } from "@/lib/workouts/lastSessionCopy";
 
 type ApiWorkout = {
   id: string;
@@ -211,8 +212,8 @@ export default function WorkoutLogger(props: { workoutInstanceId: string }) {
                   {low}–{high}
                   {hasLast ? (
                     <>
-                      . Last session: {lastLo}–{lastHi} reps per set; try to beat
-                      that up to {high}.
+                      . Last session: {formatLastSessionRepsPerSet(lastLo, lastHi)};
+                      try to beat that up to {high}.
                     </>
                   ) : null}
                 </p>

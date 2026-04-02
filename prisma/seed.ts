@@ -1,10 +1,7 @@
 import { prisma } from "@/lib/db";
 import { upperLower4DayTemplate } from "@/lib/program/template";
 import { hashPassword } from "@/lib/auth/password";
-
-function daysAgo(n: number) {
-  return new Date(Date.now() - n * 24 * 60 * 60 * 1000);
-}
+import { seedDemoWorkoutHistory } from "./seed/demoHistory";
 
 async function main() {
   const demoEmail = "demo@example.com";
@@ -64,88 +61,7 @@ async function main() {
     }
   }
 
-  // Sample workout history (2 sessions) for analytics + progression demos.
-  const upperA = await prisma.workoutDay.findFirstOrThrow({
-    where: { programId: program.id, name: "Upper A" },
-    include: { exercises: true },
-  });
-  const lowerA = await prisma.workoutDay.findFirstOrThrow({
-    where: { programId: program.id, name: "Lower A" },
-    include: { exercises: true },
-  });
-
-  const upperInstance = await prisma.workoutInstance.create({
-    data: {
-      userId: user.id,
-      programId: program.id,
-      workoutDayId: upperA.id,
-      date: daysAgo(5),
-      status: "COMPLETED",
-    },
-  });
-  const lowerInstance = await prisma.workoutInstance.create({
-    data: {
-      userId: user.id,
-      programId: program.id,
-      workoutDayId: lowerA.id,
-      date: daysAgo(3),
-      status: "COMPLETED",
-    },
-  });
-
-  async function seedExercise(
-    instanceId: string,
-    exerciseName: string,
-    sets: Array<{ reps: number; weight: number; rir: number }>,
-  ) {
-    const exercise = await prisma.exercise.findFirstOrThrow({
-      where: { workoutDay: { programId: program.id }, name: exerciseName },
-    });
-    for (let i = 0; i < sets.length; i++) {
-      const s = sets[i];
-      await prisma.setLog.upsert({
-        where: {
-          workoutInstanceId_exerciseId_setNumber: {
-            workoutInstanceId: instanceId,
-            exerciseId: exercise.id,
-            setNumber: i + 1,
-          },
-        },
-        create: {
-          workoutInstanceId: instanceId,
-          exerciseId: exercise.id,
-          setNumber: i + 1,
-          reps: s.reps,
-          weight: s.weight,
-          rir: s.rir,
-          completed: true,
-        },
-        update: {
-          reps: s.reps,
-          weight: s.weight,
-          rir: s.rir,
-          completed: true,
-        },
-      });
-    }
-  }
-
-  await seedExercise(upperInstance.id, "Incline DB Press", [
-    { reps: 8, weight: 55, rir: 1 },
-    { reps: 8, weight: 55, rir: 0 },
-  ]);
-  await seedExercise(upperInstance.id, "Pull-Ups", [
-    { reps: 8, weight: -30, rir: 1 },
-    { reps: 7, weight: -30, rir: 0 },
-  ]);
-  await seedExercise(lowerInstance.id, "Squat or Leg Press", [
-    { reps: 8, weight: 185, rir: 1 },
-    { reps: 8, weight: 185, rir: 0 },
-  ]);
-  await seedExercise(lowerInstance.id, "Romanian Deadlift", [
-    { reps: 8, weight: 165, rir: 1 },
-    { reps: 7, weight: 165, rir: 0 },
-  ]);
+  await seedDemoWorkoutHistory(prisma, { userId: user.id, programId: program.id });
 }
 
 main()
@@ -158,4 +74,3 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
-
