@@ -24,10 +24,7 @@ async function main() {
         },
       });
 
-  await prisma.program.updateMany({
-    where: { userId: user.id, active: true },
-    data: { active: false },
-  });
+  await prisma.program.deleteMany({ where: { userId: user.id } });
 
   const program = await prisma.program.create({
     data: { userId: user.id, name: upperLower4DayTemplate.programName, active: true },

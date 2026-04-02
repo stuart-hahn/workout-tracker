@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "db:seed": "node --import tsx prisma/seed.ts",
+    "db:reset": "prisma migrate reset --force && npm run db:seed",
     "test": "vitest run"
   },
   "dependencies": {

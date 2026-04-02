@@ -72,7 +72,6 @@ export function computeAutoTarget(input: AutoWeightInput): AutoTarget {
   }
 
   const minReps = Math.min(...sessionReps);
-  const maxReps = Math.max(...sessionReps);
   const hitTopAcrossSets =
     minReps >= repRangeMax && completedWithReps.length === completed.length;
 
@@ -95,13 +94,15 @@ export function computeAutoTarget(input: AutoWeightInput): AutoTarget {
     };
   }
 
-  const suggestedLow = Math.min(repRangeMax, minReps + 1);
-  const suggestedHigh = repRangeMax;
+  // Double progression (add-reps): beat last session's minimum completed reps, up to program max.
+  const nextLow = minReps + 1;
+  const targetRepMin = Math.max(repRangeMin, Math.min(repRangeMax, nextLow));
+  const targetRepMax = repRangeMax;
 
   return {
     targetWeight: Number(roundTo(workingWeight, input.weightRounding).toFixed(2)),
-    targetRepMin: suggestedLow,
-    targetRepMax: suggestedHigh,
+    targetRepMin,
+    targetRepMax,
     lastSessionRepMin: sessionBounds!.min,
     lastSessionRepMax: sessionBounds!.max,
     rationale:

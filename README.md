@@ -33,10 +33,18 @@ npx prisma migrate dev
 
 ### 4) Seed sample data
 
-Creates a demo user, the Upper/Lower 4-day template, and a couple historical sessions.
+Creates a demo user, the Upper/Lower 4-day template, and a couple historical sessions. Running `db:seed` again **replaces** that user’s programs and workout history (idempotent for the demo account).
 
 ```bash
 npm run db:seed
+```
+
+### Reset database (development only)
+
+**Destructive:** drops all data, reapplies migrations, then seeds. Uses whatever `DATABASE_URL` points at (typically `file:./dev.db`). Do not use against production.
+
+```bash
+npm run db:reset
 ```
 
 Demo credentials:

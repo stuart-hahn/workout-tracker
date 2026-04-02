@@ -105,4 +105,79 @@ describe("computeAutoTarget", () => {
 
     expect(t.targetWeight).toBe(0);
   });
+
+  it("suggests 8-10 when last session was 7,7 on a 6-10 range", () => {
+    const t = computeAutoTarget({
+      unit: "LB",
+      repRangeMin: 6,
+      repRangeMax: 10,
+      assistanceMode: "NONE",
+      weightIncrement: 5,
+      weightRounding: 5,
+      lastSets: [
+        { reps: 7, weight: 50, completed: true },
+        { reps: 7, weight: 50, completed: true },
+      ],
+    });
+
+    expect(t.targetRepMin).toBe(8);
+    expect(t.targetRepMax).toBe(10);
+    expect(t.lastSessionRepMin).toBe(7);
+    expect(t.lastSessionRepMax).toBe(7);
+  });
+
+  it("suggests 8-10 when last session was 7,8 on a 6-10 range", () => {
+    const t = computeAutoTarget({
+      unit: "LB",
+      repRangeMin: 6,
+      repRangeMax: 10,
+      assistanceMode: "NONE",
+      weightIncrement: 5,
+      weightRounding: 5,
+      lastSets: [
+        { reps: 7, weight: 50, completed: true },
+        { reps: 8, weight: 50, completed: true },
+      ],
+    });
+
+    expect(t.targetRepMin).toBe(8);
+    expect(t.targetRepMax).toBe(10);
+    expect(t.lastSessionRepMin).toBe(7);
+    expect(t.lastSessionRepMax).toBe(8);
+  });
+
+  it("only sets with finite reps count toward min; clamps suggested low to repRangeMin", () => {
+    const t = computeAutoTarget({
+      unit: "LB",
+      repRangeMin: 8,
+      repRangeMax: 12,
+      assistanceMode: "NONE",
+      weightIncrement: 5,
+      weightRounding: 5,
+      lastSets: [
+        { reps: 7, weight: 50, completed: true },
+        { reps: null, weight: 50, completed: true },
+      ],
+    });
+
+    expect(t.targetRepMin).toBe(8);
+    expect(t.targetRepMax).toBe(12);
+    expect(t.lastSessionRepMin).toBe(7);
+    expect(t.lastSessionRepMax).toBe(7);
+  });
+
+  it("when program range is a single rep, suggested band is that rep (add-reps phase)", () => {
+    const t = computeAutoTarget({
+      unit: "LB",
+      repRangeMin: 8,
+      repRangeMax: 8,
+      assistanceMode: "NONE",
+      weightIncrement: 5,
+      weightRounding: 5,
+      lastSets: [{ reps: 7, weight: 40, completed: true }],
+    });
+
+    expect(t.targetRepMin).toBe(8);
+    expect(t.targetRepMax).toBe(8);
+  });
 });
